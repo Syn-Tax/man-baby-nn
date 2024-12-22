@@ -1,0 +1,58 @@
+; This program runs a series of operations, in order to test register addressing
+
+; The program starts at address 1, so we need to pad out address 0 
+		VAR 0						; Declare 32-bit variable to fill space 
+START:	LDR INDEX					; Load the value of INDEX into the accumulator
+		ADD FUNCTAB_START			; Add FUNCTAB_START to the accumulator
+		LDRACC						; Load into the accumulator what's stored at the address in the accumulator
+		STO RELTOJMP				; Store the accumulator into RELTOJMP
+		JAD RELTOJMP				; Jump to the address stored at RELTOJMP
+		LDR INDEX					; Load INDEX into the accumulator
+		ADD #1 						; ADD 1 to the accumulator
+		STO INDEX 					; Store the value of the accumulator into INDEX
+		JMP START 					; Jump to the start of the program
+
+
+
+RELTOJMP: VAR 0 					; Declare 32-bit variable
+INDEX: VAR 0 						; Declare 32-bit variable
+FUNCTAB_START: VAR FUNCTAB_0 		; Declare 32-bit variable
+FUNCTAB_0: VAR FUNC0 				; Declare 32-bit variable
+FUNCTAB_1: VAR FUNC1 				; Declare 32-bit variable
+FUNCTAB_2: VAR FUNC2 				; Declare 32-bit variable
+FUNCTAB_3: VAR FUNC3 				; Declare 32-bit variable
+
+
+
+FUNC0: PUSHLR 						; PUSH the value of the link register onto the stack
+	LDR NUM1 						; Load NUM1 into the accumulator
+	ADD NUM2 						; Add NUM2 to the accumulator
+	STO FUNC0RES 					; STORE the accumulator into FUNC0RES
+	RET 							; Pop the top of the stack into the program counter
+
+NUM1: VAR 25 						; Declare 32-bit variable
+NUM2: VAR 62 						; Declare 32-bit variable
+FUNC0RES: VAR 0 					; Declare 32-bit variable
+
+
+FUNC1: PUSHLR						; PUSH the value of the link register onto the stack		
+	LDR NUM3						; Load NUM3 into the accumulator		
+	SUB NUM4						; Subtract NUM4 from the accumulator		
+	STO FUNC1RES					; STORE the accumulator into FUNC1RES			
+	RET								; Pop the top of the stack into the program counter
+
+NUM3: VAR 695 						; Declare 32-bit variable
+NUM4: VAR 275 						; Declare 32-bit variable
+FUNC1RES: VAR 0 					; Declare 32-bit variable
+
+FUNC2: PUSHLR						; PUSH the value of the link register onto the stack		
+	LDR NUM5						; Load NUM5 into the accumulator				
+	DIV NUM6						; DIVIDE the accumulator by NUM6			
+	STO FUNC2RES					; STORE the accumulator into FUNC2RES						
+	RET								; Pop the top of the stack into the program counter
+
+NUM5: VAR 100 						; Declare 32-bit variable
+NUM6: VAR 5 						; Declare 32-bit variable
+FUNC2RES: VAR 0 					; Declare 32-bit variable
+
+FUNC3: STP 							; Our final function Halts execution

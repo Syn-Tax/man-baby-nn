@@ -1,0 +1,113 @@
+; This program is a simple cellular automaton, it has various changable elements: The Rule, display length, number of iterations and seed are all freely editable (the display length maximum is 32). 
+; NOTE that running this with all 32 elements will be incredibly slow if you have the coloured terminal enabled, build the project with make DEBUG=1 if you wish to use the program in this way.
+
+; The program starts at address 1, so we need to pad out address 0 
+		  VAR 0							; Declare 32-bit variable to fill space 
+START:    LDR INDEX						; Load INDEX into the accumulator
+		  TST NUM_ITERATIONS			; Compare the accumulator to NUM_ITERATIONS
+		  JGE END						; If the accumulator >= NUM_ITERATIONS Then jump to END
+
+		  LDR CURR_ROW					; Load CURR_ROW into the accumulator
+		  LDRACC 						; Load the memory stored at the address in the accumulator into the accumulator
+		  STO PREV_ROW 					; Store the accumulator in PREV_ROW
+
+		  JMP BUILD_ROW 				; Jump to BUILD_ROW
+
+
+		  LDR CURR_ROW 					; Load CURR_ROW into the accumulator
+		  ADD #1 						; Add 1 to the accumulator
+		  STO CURR_ROW 					; Store the accumulator in CURR_ROW
+
+		  STOACC WORKING_ROW 			; Store WORKING_ROW in the address stored in the accumulator
+
+		  LDR INDEX						; Load INDEX into the accumulator
+		  ADD #1 						; Add 1 to the accumulator
+		  STO INDEX						; Store the accumulator into INDEX
+		  JMP START 					; jump to START
+
+END: STP								; End program execution
+
+
+INDEX: VAR 0 							; Declare 32-bit variable
+
+PREV_ROW: VAR 0 						; Declare 32-bit variable
+CURR_ROW: VAR MEMORY_START 				; Declare 32-bit variable
+WORKING_ROW: VAR 10 					; Declare 32-bit variable
+
+
+RULE: VAR 30 							; Declare 32-bit variable NOTE YOU CAN EDIT THIS TO CHANGE THE RULE
+DISPLAY_LEN: VAR 32 					; Declare 32-bit variable NOTE YOU CAN EDIT THIS TO CHANGE THE DISPLAY LEN
+NUM_ITERATIONS: VAR 10 					; Declare 32-bit variable NOTE YOU CAN EDIT THIS TO CHANGE THE NUMBER OF ITERATIONS
+
+BUILD_ROW: PUSHLR 						; Push the link register onto the stack
+	LDR #0 								; Load 0 into the accumulator
+	STO WORKING_ROW 					; Store the value of the accumulator into WORKING_ROW
+	STO ROW_INDEX 						; Store the value of the accumulator into ROW_INDEX
+	STO BIT_TO_SET 						; Store the value of the accumulator into BIT_TO_SET
+ROW_LOOP: LDR ROW_INDEX 				; Load the value of ROW_INDEX into the accumulator
+	TST DISPLAY_LEN 					; Compare the accumulator to DISPLAY_LEN
+	JGE ROW_RET 						; If accumulator >= DISPLAY_LEN jump to ROW_RET
+	JMP GET_TRIPLE 						; Jump to GET_TRIPLE
+	STO TRIPLE_TMP 						; Store the accumulator in TRIPLE_TMP
+	LDR RULE 							; Load RULE into the accumulator
+	RSR TRIPLE_TMP 						; Shift the accumulator right by the value of TRIPLE_TMP
+	AND #1 								; And the accumulator with 1
+	LSL ROW_INDEX 						; Shift the accumulator left by the value of ROW_INDEX
+	ORR WORKING_ROW 					; Or the accumulator with the value of WORKING_ROW
+	STO WORKING_ROW 					; Store the accumulator in WORKING_ROW
+	LDR ROW_INDEX 						; Load ROW_INDEX into the accumulator
+	ADD #1 	 							; Add 1 to the accumulator
+	STO ROW_INDEX 						; Store the accumulator in ROW_INDEX
+	JMP ROW_LOOP 						; Jump to ROW_LOOP
+ROW_RET:	RET 						; Pop the top of the stack into the program counter
+
+ROW_INDEX: VAR 0 						; Declare 32-bit variable
+BIT_TO_SET: VAR 0 						; Declare 32-bit variable
+TRIPLE_TMP: VAR 0 						; Declare 32-bit variable
+
+GET_TRIPLE: PUSHLR						; Push the link register onto the stack
+	PUSHACC 							; Push the accumulator onto the stack
+	SUB #1 							 	; Subtract 1 from the accumulator					
+	JMP SORT_INDEX 						; Jump to SORT_INDEX
+	STO INDEX_STORE 					; Store the accumulator in INDEX_STORE
+	LDR PREV_ROW 						; Load PREV_ROW into the accumulator
+	RSR INDEX_STORE 					; Shift the accumulator right by the value of INDEX_STORE
+	AND #1 								; And the accumulator with 1
+	LSL #2 								; Shift the accumulator left by 2
+	STO TRIPLE_GEN 						; Store the accumulator in TRIPLE_GEN
+	POPACC 								; Pop the top of the stack into the accumulator
+	PUSHACC 							; Push the accumulator onto the stack
+	STO INDEX_STORE 					; Store the accumulator in INDEX_STORE
+	LDR PREV_ROW 						; Load PREV_ROW into the accumulator
+	RSR INDEX_STORE 					; Shift the accumulator right by the value of INDEX_STORE
+	AND #1 								; And the accumulator with 1
+	LSL #1 								; Shift the accumulator left by 1
+	ORR TRIPLE_GEN 						; Or the accumulator with TRIPLE_GEN
+	STO TRIPLE_GEN 						; Store the accumulator in TRIPLE_GEN
+	POPACC 								; Pop the top of the stack into the accumulator
+	ADD #1 								; Add 1 to the accumulator
+	JMP SORT_INDEX 						; Jump to SORT_INDEX
+	STO INDEX_STORE 					; Store the accumulator in INDEX_STORE
+	LDR PREV_ROW 						; Load PREV_ROW into the accumulator
+	RSR INDEX_STORE 					; Shift the accumulator right by the value of INDEX_STORE
+	AND #1 								; And the accumulator with 1
+	ORR TRIPLE_GEN						; Or the accumulator with TRIPLE_GEN
+	STO TRIPLE_GEN						; Store the accumulator in TRIPLE_GEN
+	RET									; Pop the top of the stack into the program counter
+
+INDEX_STORE: VAR 0 						; Declare 32-bit variable
+TRIPLE_GEN: VAR 0 						; Declare 32-bit variable
+
+SORT_INDEX: PUSHLR						; Push the link register onto the stack
+	TST #0
+	JGE NOT_NEGATIVE 					; Jump to NOT_NEGATIVE
+	LDR DISPLAY_LEN 					; Load DISPLAY_LEN into the accumulator
+	SUB #1 								; Subtract 1 from the accumulator
+	RET									; Pop the top of the stack into the program counter
+NOT_NEGATIVE:	TST DISPLAY_LEN 		; Compare the accumulator with DISPLAY_LEN
+	JNE INDEX_RIGHT 					; If accumulator != DISPLAY_LEN jump to INDEX_RIGHT
+	LDR #0 								; Load 0 into the accumulator
+	RET									; Pop the top of the stack into the program counter
+INDEX_RIGHT: RET						; Pop the top of the stack into the program counter
+
+MEMORY_START: VAR 65536 				; Declare 32-bit variable NOTE YOU CAN EDIT THIS TO MODIFY THE SEED

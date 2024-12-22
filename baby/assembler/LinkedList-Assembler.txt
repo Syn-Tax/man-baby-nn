@@ -1,0 +1,55 @@
+; This program builds a simple linked list, it allocates memory dynamically (in an unsafe way but it's okat for this purpose), and stores blocks with the numbers 1 - 10, and a pointer to the next block. 
+
+; The program starts at address 1, so we need to pad out address 0 
+		  VAR 0							; Declare 32-bit variable to fill space 
+START:    LDR INDEX						; Load INDEX into the accumulator
+		  TST #10						; Compare the accumulator to 10
+		  JGE END						; If the accumulator >= 10 Then jump to END
+
+		  JMP BUILD_LINKED_LIST_BLOCK	; jump to BUILD_LINKED_LIST_BLOCK
+
+		  LDR INDEX						; Load INDEX into the accumulator
+		  ADD #1 						; Add 1 to the accumulator
+		  STO INDEX						; Store the accumulator into INDEX
+		  JMP START 					; jump to START
+
+END: STP								; End program execution
+
+
+INDEX: VAR 0 							; Declare 32-bit variable
+
+
+
+BUILD_LINKED_LIST_BLOCK: PUSHLR 		; Push the link register onto the stack
+	PUSHACC 							; Push the accumulator onto the stack
+	LDR #2 								; Load the value 2 into the accumulator
+	JMP MALLOC 							; Jump to MALLOC
+	STO BLOCKPTR 						; Store the accumulator in BLOCKPTR
+	POPACC								; Pop the top of the stack into the accumulator
+	STO NUMTOSET 						; Store the accumulator in NUMTOSET
+	LDR BLOCKPTR 						; Load BLOCKPTR into the accumulator 
+	STOACC NUMTOSET 					; Store NUMTOSET in the address held in the accumulator
+	ADD #1 								; Add 1 to the accumulator
+	STOACC HEAD 						; Store HEAD in the address held in the accumulator
+	LDR BLOCKPTR 						; Load BLOCKPTR into the accumulator
+	STO HEAD 							; Store the accumulator in HEAD
+	RET 								; Pop the top of the stack into the program counter
+
+HEAD: VAR 0 							; Declare 32-bit variable
+BLOCKPTR: VAR 0 						; Declare 32-bit variable
+NUMTOSET: VAR 0 						; Declare 32-bit variable
+
+MALLOC: PUSHLR							; Push the link register onto the stack
+	STO MEMBLOCK 						; Store the accumulator into MEMBLOCK
+	LDR FREEMEM_PTR 					; Load FREEMEM_PTR into the accumulator
+	PUSHACC 							; Push the accumulator onto the stack
+	ADD MEMBLOCK 						; Add MEMBLOCK to the accumulator
+	STO FREEMEM_PTR 					; Store the accumulator into FREEMEM_PTR
+	POPACC 								; Pop the top of the stack into the accumulator
+	RET 								; Pop the top of the stack into the program counter
+
+
+
+MEMBLOCK: VAR 0 						; Declare 32-bit variable
+FREEMEM_PTR: VAR MEMORY_START 			; Declare 32-bit variable
+MEMORY_START: VAR 0 					; Declare 32-bit variable

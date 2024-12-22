@@ -1,0 +1,50 @@
+; This program computes N CHOOSE R where N = 6 and R = 3
+; The program starts at address 1, so we need to pad out address 0 
+		  VAR 0				; Declare 32-bit variable to fill space 
+START:    LDR #3 			; Load 3 into the accumulator
+		  PUSHACC			; Push the accumulator onto the stack
+		  LDR #6			; Load 6 into the accumulator
+		  JMP CHOOSE		; Jump to the choose subroutine
+END:      STP				; End the program
+
+CHOOSE: STO N 				; Store the accumulator into N
+	POPACC					; Pop the top of the stack into the accumulator
+	PUSHLR					; Push the link register onto the stack
+	STO R 					; Store the value of the accumulator into R
+	LDR N 					; Load N into the accumulator
+	JMP FACTORIAL 			; Call the factorial subroutine
+	STO NFACTORIAL 			; Store the accumulator in NFACTORIAL
+	LDR R 					; Load R into the accumulator
+	JMP FACTORIAL 			; Call the factorial subroutine
+	STO RFACTORIAL 			; Store the accumulator in RFACTORIAL
+	LDR N 					; Load N into the accumulator
+	SUB R 					; Subtract R from the accumulator 
+	JMP FACTORIAL 			; Call the factorial subroutine
+	STO NTAKERFACTORIAL 	; Store the accumulator in NTAKERFACTORIAL
+	LDR RFACTORIAL 			; Load the value of RFACTORIAL into the accumulator
+	MUL NTAKERFACTORIAL 	; Multiply the accumulator by NTAKERFACTORIAL
+	STO DENOMINATOR 		; Store the accumulator into DENOMINATOR
+	LDR NFACTORIAL 			; Load NFACTORIAL into the accumulator
+	DIV DENOMINATOR 		; divide the accumulator by DENOMINATOR
+	RET 					; Pop the top of the stack into the program counter
+
+
+N: VAR 0 					; Declare 32-bit variable
+R: VAR 0 					; Declare 32-bit variable
+NFACTORIAL: VAR 0			; Declare 32-bit variable
+RFACTORIAL: VAR 0			; Declare 32-bit variable
+NTAKERFACTORIAL: VAR 0		; Declare 32-bit variable
+DENOMINATOR: VAR 0			; Declare 32-bit variable
+
+FACTORIAL: PUSHLR 			; Push the link register onto the stack
+	TST #1 					; Compare the accumulator to 1
+	JEQ FACTORIAL_RET		; If the accumulator == 1 jump to FACTORIAL_RET
+	PUSHACC					; Push the accumulator onto the stack
+	SUB #1					; Subtract 1 from the accumulator 
+	JMP FACTORIAL 			; Call the FACTORIAL subroutine
+	STO TEMP 				; Store the accumulator into TEMP
+	POPACC 					; Pop the top of the stack into the accumulator
+	MUL TEMP 				; Multiply the accumulator by TEMP
+FACTORIAL_RET:  RET 		; Pop the top of the stack into the program counter
+
+TEMP: VAR 0					; Declare 32-bit variable
