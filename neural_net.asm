@@ -2,29 +2,141 @@
 ; The program starts at address 1, so we need to pad out address 0 
           VAR 0       ; Declare 32-bit variable to fill space 
 
-START: LDR ARRAY_A
+START: JMP INIT
+
+    LDR INPUTS_PTR
     STO A
-
-    LDR ARRAY_B
-    STO B
-
-    JMP DOT
-END:      STP         ; Stop processor
+    JMP FORWARD
+END: STP         ; Stop processor
 
 ;; METHOD DECLARATIONS
 
 ; method to conduct forward pass through the network
 FORWARD: PUSHLR
+
+    ; copy inputs into first output layer
+    LDR #0
+    STO H
+
+    ; get input layer dim into F
+    LDR LAYER_DIMS
+    LDRACC
+    STO F
+
+INPUT_LOOP: LDR H ; for loop exit condition
+    TST F
+    JGE INPUT_RET
+
+    ; get input value from register A
+    LDR A
+    ADD H
+    LDRACC
+
+    STO I ; store in output register temporarily
+
+    ; get output address
+    LDR OUTPUTS_PTR
+    LDRACC
+    ADD H
+
+    STOACC I ; store I into output address
+
+    ; increment counter
+    LDR H
+    ADD #1
+    STO H
+
+    JMP INPUT_LOOP
+
     ; initialise counter from 1 (skipping input layer)
-    LDR #1
+INPUT_RET: LDR #1
     STO H
 
     ; loop through each layer
 LAYER_LOOP: LDR H
     TST NUM_LAYERS
-    JGE
+    JGE FORWARD_RET
+
+    ; store size of current layer in F
+    LDR LAYER_DIMS
+    ADD H
+    STO F
+
+    ; start second counter in G
+    LDR #0
+    STO G
 
     ; loop through each neuron
+NEURON_LOOP:  LDR G
+    TST F
+    JGE NEURON_RET
+
+    ; dot weights and previous layer's output
+    ; get current weights pointer
+    LDR WEIGHTS_PTR
+    ADD H
+    SUB #1
+    LDRACC
+
+    ADD G
+    STO A
+
+    ; get current outputs pointer
+    LDR OUTPUTS_PTR
+    ADD H
+    SUB #1
+    STO B
+
+    ; push current counters onto stack
+    LDR F
+    PUSHACC
+
+    LDR G
+    PUSHACC
+
+    LDR H
+    PUSHACC
+
+    ; calculate dot product
+    JMP DOT
+
+    ; pop counters from stack
+    POPACC
+    STO H
+
+    POPACC
+    STO G
+
+    POPACC
+    STO F
+
+    ; add bias
+    LDR BIASES_PTR
+    ADD H
+    SUB #1
+    LDRACC
+    ADD G
+    LDRACC ; load current bias into accumulator
+
+    ADDF I ; add to weighted sum
+    STO I ; store back in output register
+
+    ; store output
+    LDR OUTPUTS_PTR
+    ADD H
+    LDRACC
+    ADD G
+    STOACC I
+
+    ; increment G
+    LDR G
+    ADD #1
+    JMP NEURON_LOOP
+
+    ; increment H and restart layer loop
+NEURON_RET: LDR H
+    ADD #1
+    JMP LAYER_LOOP
 
 FORWARD_RET: RET
 
@@ -265,13 +377,15 @@ LAYER_DIMS: VAR LAYER_DIMS_A
 LAYER_DIMS_A: VAR 1
               VAR 1
 
+
+; data
+INPUTS_PTR: VAR INPUTS
+INPUTS: VAR 1
+
 ; managed variables
 WEIGHTS_PTR: VAR 0
 BIASES_PTR: VAR 0
 OUTPUTS_PTR: VAR 0
-
-ARRAY_A: VAR ARR_A
-ARR_A: VAR 1082130432
 
 ; MALLOC variables
 MEMBLOCK: VAR 0
