@@ -14,9 +14,28 @@ END: STP         ; Stop processor
 ;; METHOD DECLARATIONS
 
 ; backpropagation!!! (god this is stupid)
-BACKWARD: PUSHLR
-    ; calculate gradients for final layer
+BACKWARD: PUSHLR ; pointer to predictions in A, pointer to targets in B, floating point number of predictions in C
+    ; create counter to loop through layers backwards
+    LDR NUM_LAYERS
+    STO H
 
+    ; move floating point number of preds to D
+    LDR C
+    STO D
+
+    ; calculate gradients for final layer
+    LDR BIAS_GRADS_PTR
+    ADD H
+
+    STO C ; store in C to calculate derivative of MSE
+
+    LDR H
+    PUSHACC
+
+    JMP MSE_PRIME ; calculate error grads
+
+    ; calculate weight gradients
+    ; 
 
 ; method to calculate the derivatives of MSE loss, pointer to predictions in A, pointer to targets in B, pointer to results in C, floating point number of predictions in D
 MSE_PRIME: PUSHLR ; -2 * (target - pred) / num_preds
@@ -462,13 +481,14 @@ RANDOM: PUSHLR
 
     ; increment seed
     LDR SEED
-
-
     RET
+
+; floating point transpose matrix, vector product
+; pointer to input matrix in register A, pointer to input vector in register B, pointer to output vector in register C
 
 ; floating point dot product implementation 
 ; pointer to input arrays in registers A and B
-; output is in register H
+; output is in register I
 DOT: PUSHLR
     ; initialise output to 0
     LDR #0
@@ -505,10 +525,6 @@ DOT_LOOP: LDR E ; for loop exit condition
 
 DOT_RET: RET
 
-ERROR: LDR #1
-    STO ERR
-    RET
-
 MALLOC: PUSHLR							; Push the link register onto the stack
     LDR A
 	STO MEMBLOCK 						; Store the accumulator into MEMBLOCK
@@ -536,7 +552,6 @@ G:    VAR 0
 H:    VAR 0
 ; method output
 I:    VAR 0
-ERR:  VAR 0 ; error flag
 VAR -1
 
 SEED: VAR 0
