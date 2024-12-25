@@ -2,14 +2,133 @@
 ; The program starts at address 1, so we need to pad out address 0 
           VAR 0       ; Declare 32-bit variable to fill space 
 
-START: JMP INIT
-
-    LDR INPUTS_PTR
+START: LDR ARRAY_A
     STO A
-    JMP FORWARD
+
+    LDR ARRAY_B
+    STO B
+
+    JMP MSE_LOSS
 END: STP         ; Stop processor
 
 ;; METHOD DECLARATIONS
+
+; backpropagation!!! (god this is stupid)
+BACKWARD: PUSHLR
+    ; calculate gradients for final layer
+
+
+; method to calculate the derivatives of MSE loss, pointer to predictions in A, pointer to targets in B, pointer to results in C, floating point number of predictions in D
+MSE_PRIME: PUSHLR ; -2 * (target - pred) / num_preds
+    ; get integer number of outputs
+    LDR LAYER_DIMS
+    ADD NUM_LAYERS
+    SUB #1
+    LDRACC
+    STO E ; store this in register E
+
+    ; start counter
+    LDR #0
+    STO H
+
+MSE_PRIME_LOOP: LDR H ; for loop exit condition
+    TST E
+    JGE MSE_PRIME_RET
+
+    ; get prediction
+    LDR A
+    ADD H
+    LDRACC
+    STO F
+
+    ; get target
+    LDR B
+    ADD H
+    LDRACC
+
+    SUBF F ; target - pred
+    STO F ; store back into F
+
+    MULF MINUS_TWO_FLOAT ; accumulator now holds -2 * (target - pred)
+    DIVF D ; accumulator now holds -2 * (target - pred) / num_preds
+
+    STO I ; store in output register temporarily
+
+    ; find address to store at
+    LDR C
+    ADD H
+
+    STOACC I ; store output at correct address
+
+    ; increment counter
+    LDR H
+    ADD #1
+    JMP MSE_PRIME_LOOP
+
+MSE_PRIME_RET: RET
+
+; method to calculate MSE loss, pointer to predictions in A, pointer to targets in B
+MSE_LOSS: PUSHLR
+    ; get number of outputs
+    LDR LAYER_DIMS
+    ADD NUM_LAYERS
+    SUB #1
+    LDRACC
+    STO C ; store this in register C
+
+    ; start sum at zero in output register
+    LDR #0
+    STO I
+
+    ; start floating point counter to allow for mean later
+    LDR #0
+    STO D
+
+    ; looy through each output and sum square errors
+    LDR #0
+    STO H
+
+MSE_LOOP: LDR H ; for loop exit condition
+    TST C
+    JGE MSE_RET
+
+    ; get prediction
+    LDR A
+    ADD H
+    LDRACC ; load prediction into accumulator
+    STO E
+
+    ; get target
+    LDR B
+    ADD H
+    LDRACC ; load target into accumulator
+
+    SUBF E ; target - pred
+
+    STO E
+    MULF E ; square error
+
+    ; add to output
+    ADDF I
+    STO I
+
+    ; increment floating point counter
+    LDR D
+    ADDF ONE_FLOAT
+    STO D
+
+    ; increment counter
+    LDR H
+    ADD #1
+    STO H
+
+    JMP MSE_LOOP
+
+MSE_RET: LDR I ; finish mean calculation
+    DIVF D
+    STO I
+
+    RET
 
 ; method to conduct forward pass through the network
 FORWARD: PUSHLR
@@ -152,12 +271,26 @@ INIT: PUSHLR
     LDR I
     STO BIASES_PTR
 
+    ; allocate bias grads 1st dimension
+    LDR NUM_LAYERS
+    STO A
+    JMP MALLOC
+    LDR I
+    STO BIAS_GRADS_PTR
+
     ; allocate weights 1st dimension
     LDR NUM_LAYERS
     STO A
     JMP MALLOC
     LDR I
     STO WEIGHTS_PTR
+
+    ; allocate weight grads 1st dimension
+    LDR NUM_LAYERS
+    STO A
+    JMP MALLOC
+    LDR I
+    STO WEIGHT_GRADS_PTR
 
     ; allocate outputs 1st dimension
     LDR NUM_LAYERS
@@ -194,6 +327,19 @@ INIT_LOOP: LDR H ; for loop exit condition
     
     STOACC I
 
+    ; allocate bias grads for each layer
+    LDR LAYER_DIMS
+    ADD #1
+    ADD H
+    LDRACC
+    STO A
+
+    JMP MALLOC
+
+    LDR BIAS_GRADS_PTR
+    ADD H
+    STOACC I
+
     ; allocate output space for each layer
     LDR LAYER_DIMS
     ADD #1
@@ -220,10 +366,25 @@ INIT_LOOP: LDR H ; for loop exit condition
     LDR WEIGHTS_PTR
     ADD H
 
-    LDR #0
-    STO G
+    STOACC I
+
+    ; allocate weight grads 2nd dimension
+    LDR LAYER_DIMS
+    ADD #1
+    ADD H
+    LDRACC
+    STO A
+
+    JMP MALLOC
+
+    LDR WEIGHT_GRADS_PTR
+    ADD H
 
     STOACC I
+
+    ; initialise next counter
+    LDR #0
+    STO G
 
 INIT_LOOP_LOOP: LDR LAYER_DIMS ; for loop exit condition
     ADD H
@@ -244,6 +405,16 @@ INIT_LOOP_LOOP: LDR LAYER_DIMS ; for loop exit condition
 
     ; save pointer into weights array at relevant location
     LDR WEIGHTS_PTR
+    ADD H
+    LDRACC
+    ADD G
+
+    STOACC I
+
+    ; allocate weight grads
+    JMP MALLOC
+
+    LDR WEIGHT_GRADS_PTR
     ADD H
     LDRACC
     ADD G
@@ -372,20 +543,33 @@ SEED: VAR 0
 RVAL: VAR 668265261
 
 ; network variables
-NUM_LAYERS: VAR 1
+NUM_LAYERS: VAR 2
 LAYER_DIMS: VAR LAYER_DIMS_A
-LAYER_DIMS_A: VAR 1
+LAYER_DIMS_A: VAR 2
               VAR 1
+
+; test arrays
+ARRAY_A: VAR ARR_A
+ARR_A: VAR 1056964608
+
+ARRAY_B: VAR ARR_B
+ARR_B: VAR 0
 
 
 ; data
 INPUTS_PTR: VAR INPUTS
-INPUTS: VAR 1
+INPUTS: VAR 1065353216
+    VAR 0
+
+ONE_FLOAT: VAR 1065353216
+MINUS_TWO_FLOAT: VAR 3221225472
 
 ; managed variables
 WEIGHTS_PTR: VAR 0
 BIASES_PTR: VAR 0
 OUTPUTS_PTR: VAR 0
+WEIGHT_GRADS_PTR: VAR 0
+BIAS_GRADS_PTR: VAR 0
 
 ; MALLOC variables
 MEMBLOCK: VAR 0
